@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BCC Manager V40 (Final Structure Fix)</title>
+    <title>BCC Manager V42 (2-Way Sync Fixed)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
@@ -42,7 +42,7 @@
     <div class="bg-white sticky top-0 z-30 shadow-sm">
         <div class="p-3 border-b flex justify-between items-center bg-[#128C7E] text-white">
             <h1 class="font-bold text-lg flex items-center gap-2">
-                <i class="fas fa-university"></i> BCC V40
+                <i class="fas fa-university"></i> BCC V42
             </h1>
             <div class="flex gap-3 items-center">
                 <div id="cloudStatus" class="flex items-center gap-1 text-xs bg-black/20 px-2 py-1 rounded-full cursor-pointer" onclick="openSettings()">
@@ -150,11 +150,11 @@
     <div class="fixed bottom-0 left-0 right-0 bg-white p-3 border-t shadow-lg z-40 max-w-5xl mx-auto">
         <div id="attendanceActions" class="flex gap-2 items-center">
              <div class="bg-red-100 text-red-800 px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap"><span id="absentCount">0</span> Absent</div>
-            <button onclick="saveAttendance()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2"><i class="fas fa-save"></i> Save <i class="fas fa-cloud-upload-alt ml-1 text-[10px] opacity-70"></i></button>
+            <button onclick="saveAttendance()" class="flex-1 bg-green-600 text-white py-3 rounded-lg font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2"><i class="fas fa-save"></i> Save</button>
             <button onclick="openSendModal('attendance')" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2"><i class="fab fa-whatsapp"></i> Send</button>
         </div>
         <div id="marksActions" class="hidden flex gap-2">
-            <button onclick="saveMarks()" class="flex-1 bg-purple-600 text-white py-3 rounded-lg font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2"><i class="fas fa-save"></i> Save <i class="fas fa-cloud-upload-alt ml-1 text-[10px] opacity-70"></i></button>
+            <button onclick="saveMarks()" class="flex-1 bg-purple-600 text-white py-3 rounded-lg font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2"><i class="fas fa-save"></i> Save</button>
             <button onclick="openSendModal('marks')" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-bold shadow-lg active:scale-95 transition flex items-center justify-center gap-2"><i class="fab fa-whatsapp"></i> Send</button>
         </div>
         <div id="followUpActions" class="hidden text-center">
@@ -166,17 +166,32 @@
     <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4">
         <div class="bg-white w-full max-w-sm rounded-xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
             <h3 class="text-xl font-bold mb-4">Settings</h3>
+            
+            <!-- 2-WAY SYNC SECTION -->
             <div class="bg-blue-50 p-3 rounded-lg mb-4 border border-blue-200">
                 <div class="flex justify-between items-center mb-2">
-                    <p class="text-xs font-bold text-blue-800"><i class="fas fa-cloud"></i> CLOUD DATABASE</p>
+                    <p class="text-xs font-bold text-blue-800"><i class="fas fa-cloud"></i> CLOUD SYNC</p>
                     <span id="cloudStatusBadge" class="text-[10px] bg-gray-200 px-2 rounded">Not Configured</span>
                 </div>
                 <textarea id="firebaseConfigInput" rows="3" class="w-full border p-2 rounded text-[10px] font-mono mb-2" placeholder='Paste Config: { apiKey: "...", ... }'></textarea>
-                <div class="flex gap-2">
-                    <button onclick="initializeCloudConnection()" class="flex-1 bg-blue-600 text-white py-1.5 rounded text-xs font-bold">Connect</button>
-                    <button onclick="forceCloudSync()" class="flex-1 bg-green-600 text-white py-1.5 rounded text-xs font-bold hidden" id="syncBtn">Sync Now</button>
+                
+                <div class="flex flex-col gap-2">
+                    <button onclick="initializeCloudConnection()" class="w-full bg-blue-600 text-white py-2 rounded text-xs font-bold">1. Connect Cloud</button>
+                    
+                    <!-- SYNC BUTTONS (Visible only after connection) -->
+                    <div id="syncButtons" class="flex gap-2 hidden">
+                        <button onclick="forceCloudSync()" class="flex-1 bg-green-600 text-white py-2 rounded text-xs font-bold flex items-center justify-center flex-col shadow-sm border border-green-700">
+                            <span class="text-[10px] uppercase">Upload</span>
+                            <span class="text-[8px] font-normal">(Local → Cloud)</span>
+                        </button>
+                        <button onclick="downloadFromCloud()" class="flex-1 bg-purple-600 text-white py-2 rounded text-xs font-bold flex items-center justify-center flex-col shadow-sm border border-purple-700">
+                            <span class="text-[10px] uppercase">Download</span>
+                            <span class="text-[8px] font-normal">(Cloud → Local)</span>
+                        </button>
+                    </div>
                 </div>
             </div>
+
             <div class="bg-indigo-50 p-3 rounded-lg mb-4 border border-indigo-100">
                 <p class="text-xs font-bold text-indigo-800 mb-2">LOCAL BACKUP</p>
                 <button onclick="downloadData()" class="w-full bg-indigo-600 text-white py-2 rounded mb-2 text-sm font-bold">Download JSON</button>
@@ -207,7 +222,7 @@
     <!-- Send Modal -->
     <div id="sendModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4"><div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"><div id="sendHeader" class="bg-[#128C7E] p-4 text-white flex justify-between items-center"><h3 class="font-bold">Send Messages</h3><button onclick="closeModal('sendModal')" class="text-white"><i class="fas fa-times"></i></button></div><div class="p-3 bg-gray-50 text-xs text-gray-500 text-center border-b">Tip: Use two thumbs for speed sending.</div><div id="sendingList" class="flex-1 overflow-y-auto p-4 space-y-3"></div></div></div>
 
-    <!-- History Modal -->
+    <!-- History Modal with Send Feature -->
     <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4"><div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden h-[85vh] flex flex-col"><div class="bg-blue-600 p-4 text-white flex justify-between items-center"><h3 class="font-bold text-lg"><i class="fas fa-history mr-2"></i>Logs & Reports</h3><button onclick="closeModal('historyModal')" class="text-white"><i class="fas fa-times fa-lg"></i></button></div><div class="bg-blue-50 p-4 border-b border-blue-100"><p class="text-xs font-bold text-blue-800 mb-2 uppercase">Download Excel Report</p><div class="flex gap-2 mb-2"><div class="flex-1"><label class="text-[10px] text-gray-500">From</label><input type="date" id="exportStart" class="w-full p-2 border rounded text-sm"></div><div class="flex-1"><label class="text-[10px] text-gray-500">To</label><input type="date" id="exportEnd" class="w-full p-2 border rounded text-sm"></div></div><div class="flex gap-2"><select id="historyBatch" class="flex-[2] p-2 border rounded text-sm" onchange="loadHistoryData()"></select><button onclick="exportHistoryCSV()" class="flex-1 bg-green-600 text-white px-2 py-2 rounded font-bold text-sm shadow"><i class="fas fa-file-excel"></i> Download</button></div></div><div class="p-3 bg-gray-100 border-b flex justify-between items-center"><span class="text-xs font-bold text-gray-600">VIEW SINGLE DAY:</span><input type="date" id="historyDate" class="p-1 border rounded text-sm" onchange="loadHistoryData()"></div><div class="flex-1 overflow-y-auto p-4"><table class="w-full border-collapse text-sm"><thead><tr class="bg-gray-200 text-gray-700"><th class="p-2 text-left">Name</th><th class="p-2 text-center">Status</th><th class="p-2 text-right">Mobile</th></tr></thead><tbody id="historyTableBody"></tbody></table><div id="noHistoryMsg" class="text-center text-gray-400 mt-10">No record found for selected date.</div></div></div></div>
     
     <!-- Other Modals -->
@@ -221,6 +236,7 @@
     <div id="leftStudentsModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4"><div class="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"><div class="bg-gray-800 p-4 text-white flex justify-between items-center"><h3 class="font-bold">Removed Students</h3><button onclick="closeModal('leftStudentsModal')" class="text-white"><i class="fas fa-times"></i></button></div><div class="flex-1 overflow-y-auto p-4"><table class="w-full text-left text-sm"><tbody id="leftStudentsList"></tbody></table><div id="noLeftStudentsMsg" class="text-center text-gray-400 mt-5 hidden">List empty.</div></div></div></div>
 
     <script>
+        // --- GLOBAL VARIABLES ---
         let data = JSON.parse(localStorage.getItem('bcc_data_v10')) || {
             batches: ["12th Maths"],
             students: [], history: [], marksHistory: [], callReports: [], 
@@ -241,13 +257,10 @@
         const todayStr = new Date().toISOString().split('T')[0];
         let editingTestIndex = -1;
 
-        // --- UTILS (Moved to top to prevent ReferenceError) ---
+        // --- UTILS ---
         function saveData() { localStorage.setItem('bcc_data_v10', JSON.stringify(data)); }
-        
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
-        
         function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
-        
         function showLoader(show) { document.getElementById('loader').style.display = show ? 'flex' : 'none'; }
 
         function renderBatches() { 
@@ -466,12 +479,12 @@
                 const statusDiv = document.getElementById('cloudStatus');
                 const textSpan = document.getElementById('cloudText');
                 const badge = document.getElementById('cloudStatusBadge');
-                const syncBtn = document.getElementById('syncBtn');
+                const syncBtn = document.getElementById('syncButtons');
                 statusDiv.querySelector('i').className = "fas fa-cloud text-green-400";
                 textSpan.innerText = "Online";
                 badge.innerText = "Connected";
                 badge.className = "text-[10px] bg-green-100 text-green-800 px-2 rounded";
-                syncBtn.classList.remove('hidden');
+                if(syncBtn) syncBtn.classList.remove('hidden');
                 if(!silent) alert("✅ Cloud Connected!");
             } catch(e) {
                 console.error(e);
@@ -505,13 +518,58 @@
                     const id = `${r.studentId}_${new Date(r.timestamp).getTime()}`;
                     await db.collection('bcc_call_logs').doc(id).set(r, { merge: true });
                 }
-                alert("✅ Sync Complete!");
+                alert("✅ Sync Complete! Data uploaded to Cloud.");
             } catch(e) {
                 console.error(e);
                 alert("❌ Sync Failed: " + e.message);
             }
             showLoader(false);
         }
+
+        // --- NEW: DOWNLOAD FROM CLOUD ---
+        async function downloadFromCloud() {
+            if(!isCloudActive) return alert("Cloud not connected");
+            if(!confirm("⚠️ WARNING: This will overwrite your local data with Cloud data. Continue?")) return;
+            
+            showLoader(true);
+            try {
+                // 1. Fetch Batches
+                const batchDoc = await db.collection('bcc_config').doc('batches').get();
+                if(batchDoc.exists) data.batches = batchDoc.data().list || [];
+
+                // 2. Fetch Students
+                const studentsSnap = await db.collection('bcc_students').get();
+                data.students = [];
+                studentsSnap.forEach(doc => data.students.push(doc.data()));
+
+                // 3. Fetch Attendance
+                const historySnap = await db.collection('bcc_attendance').get();
+                data.history = [];
+                historySnap.forEach(doc => data.history.push(doc.data()));
+
+                // 4. Fetch Marks
+                const marksSnap = await db.collection('bcc_marks').get();
+                data.marksHistory = [];
+                marksSnap.forEach(doc => data.marksHistory.push(doc.data()));
+
+                // 5. Fetch Call Reports
+                const callsSnap = await db.collection('bcc_call_logs').get();
+                data.callReports = [];
+                callsSnap.forEach(doc => data.callReports.push(doc.data()));
+
+                // Save and Reload
+                saveData();
+                showLoader(false);
+                alert("✅ Data Downloaded Successfully! App will reload.");
+                window.location.reload();
+
+            } catch(e) {
+                console.error(e);
+                showLoader(false);
+                alert("❌ Download Failed: " + e.message);
+            }
+        }
+
 
         function loadSettings() { 
             document.getElementById('audioLink').value = data.settings.audioUrl || ""; 
