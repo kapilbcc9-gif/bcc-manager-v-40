@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BCC Manager V42 (2-Way Sync Fixed)</title>
+    <title>BCC Manager V43 (Attendance Alert)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
@@ -42,7 +42,7 @@
     <div class="bg-white sticky top-0 z-30 shadow-sm">
         <div class="p-3 border-b flex justify-between items-center bg-[#128C7E] text-white">
             <h1 class="font-bold text-lg flex items-center gap-2">
-                <i class="fas fa-university"></i> BCC V42
+                <i class="fas fa-university"></i> BCC V43
             </h1>
             <div class="flex gap-3 items-center">
                 <div id="cloudStatus" class="flex items-center gap-1 text-xs bg-black/20 px-2 py-1 rounded-full cursor-pointer" onclick="openSettings()">
@@ -631,12 +631,31 @@
             const students = data.students.filter(s => s.batch === document.getElementById(batchSelectId).value && s.active !== false);
             if(students.length === 0) { list.innerHTML = `<div class="p-8 text-center text-gray-400">Empty Batch. Add students.</div>`; return; }
             
+            // ATTENDANCE LOGIC
             if(currentTab === 'attendance') {
                 selectedAbsent = []; updateAbsentCount();
                 students.forEach(s => {
                     const div = document.createElement('div'); div.className = "flex items-center p-4 border rounded-xl bg-white shadow-sm active:bg-gray-50 transition relative mb-2";
+                    
+                    // --- NEW LOGIC: Calculate Recent Absents (Last 3 Classes) ---
+                    let recentAbsents = 0;
+                    const batchHistory = data.history
+                        .filter(h => h.batch === batch && h.date !== todayStr)
+                        .sort((a, b) => new Date(b.date) - new Date(a.date))
+                        .slice(0, 3);
+
+                    batchHistory.forEach(h => {
+                        if (h.absentIds.includes(s.id)) recentAbsents++;
+                    });
+                    
+                    let warningHtml = '';
+                    if (recentAbsents > 0) {
+                        warningHtml = `<span class="ml-2 text-[10px] font-bold text-red-600 bg-red-100 px-2 py-1 rounded-full border border-red-200"><i class="fas fa-exclamation-triangle"></i> Last 3: ${recentAbsents} Abs.</span>`;
+                    }
+                    // ------------------------------------------------------------
+
                     div.onclick = (e) => { if(!['BUTTON','I','INPUT'].includes(e.target.tagName)){ const cb=div.querySelector('.att-cb'); cb.checked=!cb.checked; toggleAbsent(s.id, cb.checked); } };
-                    div.innerHTML = `<input type="checkbox" class="att-cb w-6 h-6 mr-4 accent-red-600 rounded" onchange="toggleAbsent(${s.id}, this.checked)"><div class="flex-1"><div class="font-bold text-gray-800 text-lg">${s.name}</div><div class="text-xs text-gray-400 flex gap-3 mt-1">${s.father ? `<i class="fas fa-male"></i> ${s.father.slice(-4)}` : ''} ${s.mother ? `<i class="fas fa-female"></i> ${s.mother.slice(-4)}` : ''}</div></div><div class="flex gap-2"><button onclick="openEditModal(${s.id})" class="text-blue-400 p-2"><i class="fas fa-pencil-alt"></i></button><button onclick="markStudentLeft(${s.id})" class="text-gray-300 p-2 hover:text-red-500"><i class="fas fa-times"></i></button></div>`;
+                    div.innerHTML = `<input type="checkbox" class="att-cb w-6 h-6 mr-4 accent-red-600 rounded" onchange="toggleAbsent(${s.id}, this.checked)"><div class="flex-1"><div class="font-bold text-gray-800 text-lg flex items-center">${s.name} ${warningHtml}</div><div class="text-xs text-gray-400 flex gap-3 mt-1">${s.father ? `<i class="fas fa-male"></i> ${s.father.slice(-4)}` : ''} ${s.mother ? `<i class="fas fa-female"></i> ${s.mother.slice(-4)}` : ''}</div></div><div class="flex gap-2"><button onclick="openEditModal(${s.id})" class="text-blue-400 p-2"><i class="fas fa-pencil-alt"></i></button><button onclick="markStudentLeft(${s.id})" class="text-gray-300 p-2 hover:text-red-500"><i class="fas fa-times"></i></button></div>`;
                     list.appendChild(div);
                 });
             } else if (currentTab === 'marks') {
