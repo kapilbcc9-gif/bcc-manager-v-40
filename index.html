@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BCC Manager V45 (AI + Fixes)</title>
+    <title>BCC Manager V43 (Attendance Alert)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     
@@ -11,15 +11,6 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    
-    <!-- Gemini AI SDK -->
-    <script type="importmap">
-      {
-        "imports": {
-          "@google/generative-ai": "https://esm.run/@google/generative-ai"
-        }
-      }
-    </script>
 
     <style>
         body { font-family: 'Segoe UI', sans-serif; background-color: #f0f2f5; -webkit-tap-highlight-color: transparent; }
@@ -37,10 +28,6 @@
         #loader { position: fixed; inset:0; background:rgba(255,255,255,0.9); z-index: 100; display: none; align-items: center; justify-content: center; flex-direction: column;}
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #128C7E; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        .ai-message { padding: 10px; border-radius: 10px; margin-bottom: 8px; max-width: 80%; }
-        .ai-user { background-color: #dcf8c6; align-self: flex-end; margin-left: auto; }
-        .ai-bot { background-color: #fff; border: 1px solid #ddd; align-self: flex-start; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen flex flex-col max-w-5xl mx-auto shadow-xl">
@@ -55,13 +42,12 @@
     <div class="bg-white sticky top-0 z-30 shadow-sm">
         <div class="p-3 border-b flex justify-between items-center bg-[#128C7E] text-white">
             <h1 class="font-bold text-lg flex items-center gap-2">
-                <i class="fas fa-university"></i> BCC V45 <span class="text-[10px] bg-white text-[#128C7E] px-1 rounded">AI</span>
+                <i class="fas fa-university"></i> BCC V43
             </h1>
             <div class="flex gap-3 items-center">
                 <div id="cloudStatus" class="flex items-center gap-1 text-xs bg-black/20 px-2 py-1 rounded-full cursor-pointer" onclick="openSettings()">
                     <i class="fas fa-cloud text-gray-300"></i> <span id="cloudText">Offline</span>
                 </div>
-                <button onclick="openAIModal()" class="p-2 bg-white/20 rounded-full hover:bg-white/30"><i class="fas fa-robot"></i></button>
                 <button onclick="openSettings()" class="p-2"><i class="fas fa-cog fa-lg"></i></button>
             </div>
         </div>
@@ -181,18 +167,6 @@
         <div class="bg-white w-full max-w-sm rounded-xl p-6 shadow-2xl overflow-y-auto max-h-[90vh]">
             <h3 class="text-xl font-bold mb-4">Settings</h3>
             
-            <!-- AI CONFIG -->
-            <div class="bg-purple-50 p-3 rounded-lg mb-4 border border-purple-200">
-                <div class="flex justify-between items-center mb-2">
-                    <p class="text-xs font-bold text-purple-800"><i class="fas fa-robot"></i> GEMINI AI SETUP</p>
-                </div>
-                <input type="password" id="geminiApiKeyInput" class="w-full border p-2 rounded text-xs font-mono mb-2" placeholder="Paste Gemini API Key Here">
-                <div class="flex gap-2">
-                     <button onclick="copyToClipboard('geminiApiKeyInput')" class="bg-purple-200 text-purple-800 px-3 py-1 rounded text-[10px] font-bold">Copy Key</button>
-                </div>
-                <p class="text-[9px] text-gray-500 mt-1">Get key from aistudio.google.com</p>
-            </div>
-
             <!-- 2-WAY SYNC SECTION -->
             <div class="bg-blue-50 p-3 rounded-lg mb-4 border border-blue-200">
                 <div class="flex justify-between items-center mb-2">
@@ -245,34 +219,12 @@
         </div>
     </div>
     
-    <!-- AI MODAL -->
-    <div id="aiModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-2">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[85vh]">
-            <div class="bg-gradient-to-r from-purple-600 to-indigo-600 p-4 text-white flex justify-between items-center">
-                <h3 class="font-bold text-lg"><i class="fas fa-robot mr-2"></i>Ask Gemini AI</h3>
-                <button onclick="closeModal('aiModal')" class="text-white"><i class="fas fa-times"></i></button>
-            </div>
-            <div id="chatContainer" class="flex-1 overflow-y-auto p-4 bg-gray-50 text-sm">
-                <div class="ai-message ai-bot">Namaste Dr. Jain! Main aapka AI assistant hoon. Main students ki performance, attendance aur trends analyze kar sakta hoon. Poochiye!</div>
-            </div>
-            <div class="p-3 bg-white border-t flex gap-2">
-                <input type="text" id="aiInput" placeholder="Ask about students, marks..." class="flex-1 border p-2 rounded-full px-4 outline-none focus:border-purple-500">
-                <button onclick="sendToAI()" class="bg-purple-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow hover:bg-purple-700"><i class="fas fa-paper-plane"></i></button>
-            </div>
-            <div class="p-2 bg-gray-100 flex gap-2 overflow-x-auto text-[10px] whitespace-nowrap">
-                <button onclick="fillPrompt('Who is weak in 12th Maths?')" class="bg-white border px-2 py-1 rounded-full">Weak in 12th?</button>
-                <button onclick="fillPrompt('Attendance summary for this month')" class="bg-white border px-2 py-1 rounded-full">Attendance Summary</button>
-                <button onclick="fillPrompt('Suggest message for parents of defaulters')" class="bg-white border px-2 py-1 rounded-full">Msg for Defaulters</button>
-            </div>
-        </div>
-    </div>
-
     <!-- Send Modal -->
     <div id="sendModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4"><div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"><div id="sendHeader" class="bg-[#128C7E] p-4 text-white flex justify-between items-center"><h3 class="font-bold">Send Messages</h3><button onclick="closeModal('sendModal')" class="text-white"><i class="fas fa-times"></i></button></div><div class="p-3 bg-gray-50 text-xs text-gray-500 text-center border-b">Tip: Use two thumbs for speed sending.</div><div id="sendingList" class="flex-1 overflow-y-auto p-4 space-y-3"></div></div></div>
 
-    <!-- History Modal -->
+    <!-- History Modal with Send Feature -->
     <div id="historyModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4"><div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl overflow-hidden h-[85vh] flex flex-col"><div class="bg-blue-600 p-4 text-white flex justify-between items-center"><h3 class="font-bold text-lg"><i class="fas fa-history mr-2"></i>Logs & Reports</h3><button onclick="closeModal('historyModal')" class="text-white"><i class="fas fa-times fa-lg"></i></button></div><div class="bg-blue-50 p-4 border-b border-blue-100"><p class="text-xs font-bold text-blue-800 mb-2 uppercase">Download Excel Report</p><div class="flex gap-2 mb-2"><div class="flex-1"><label class="text-[10px] text-gray-500">From</label><input type="date" id="exportStart" class="w-full p-2 border rounded text-sm"></div><div class="flex-1"><label class="text-[10px] text-gray-500">To</label><input type="date" id="exportEnd" class="w-full p-2 border rounded text-sm"></div></div><div class="flex gap-2"><select id="historyBatch" class="flex-[2] p-2 border rounded text-sm" onchange="loadHistoryData()"></select><button onclick="exportHistoryCSV()" class="flex-1 bg-green-600 text-white px-2 py-2 rounded font-bold text-sm shadow"><i class="fas fa-file-excel"></i> Download</button></div></div><div class="p-3 bg-gray-100 border-b flex justify-between items-center"><span class="text-xs font-bold text-gray-600">VIEW SINGLE DAY:</span><input type="date" id="historyDate" class="p-1 border rounded text-sm" onchange="loadHistoryData()"></div><div class="flex-1 overflow-y-auto p-4"><table class="w-full border-collapse text-sm"><thead><tr class="bg-gray-200 text-gray-700"><th class="p-2 text-left">Name</th><th class="p-2 text-center">Status</th><th class="p-2 text-right">Mobile</th></tr></thead><tbody id="historyTableBody"></tbody></table><div id="noHistoryMsg" class="text-center text-gray-400 mt-10">No record found for selected date.</div></div></div></div>
-
+    
     <!-- Other Modals -->
     <div id="monthlyModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-2"><div class="bg-white w-full max-w-6xl rounded-xl shadow-2xl overflow-hidden h-[90vh] flex flex-col"><div class="bg-purple-700 p-3 text-white flex justify-between items-center"><h3 class="font-bold text-sm"><i class="fas fa-calendar-alt mr-2"></i>Monthly Attendance</h3><button onclick="closeModal('monthlyModal')" class="text-white"><i class="fas fa-times fa-lg"></i></button></div><div class="p-3 bg-gray-100 flex gap-2 items-center flex-wrap"><input type="month" id="reportMonth" class="p-2 border rounded font-bold text-sm flex-1" onchange="loadMonthlyData()"><select id="reportBatch" class="p-2 border rounded font-bold text-sm flex-[2]" onchange="loadMonthlyData()"></select><button onclick="printMonthlyReport()" class="bg-gray-800 text-white px-3 py-2 rounded font-bold text-sm shadow hover:bg-gray-700"><i class="fas fa-print"></i> Print</button></div><div class="flex-1 overflow-auto p-2 bg-white"><div id="monthlyGrid" class="min-w-max"></div></div></div></div>
     <div id="rankingModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-2"><div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl overflow-hidden flex flex-col h-[90vh]"><div class="bg-gradient-to-r from-orange-500 to-red-500 p-4 text-white flex justify-between items-center"><h3 class="font-bold text-lg"><i class="fas fa-chart-line mr-2"></i>Result Analysis</h3><button onclick="closeModal('rankingModal')" class="text-white bg-white/20 rounded-full p-1 w-8 h-8"><i class="fas fa-times"></i></button></div><div class="p-3 bg-orange-50 border-b border-orange-100 flex flex-col gap-2"><select id="rankingTestSelect" onchange="renderRankingList()" class="w-full p-2 border rounded font-bold text-sm text-gray-800"><option value="-1">📊 All Tests (Overall Average)</option></select><div class="flex flex-wrap justify-between items-center gap-2"><span class="text-xs text-orange-700 font-bold" id="rankSubtitle">Select a test to view details</span><div class="flex gap-2 flex-wrap"><button onclick="printRanking()" class="bg-gray-800 text-white px-3 py-1.5 rounded text-xs font-bold shadow hover:bg-gray-700"><i class="fas fa-print mr-1"></i> Print List</button><button onclick="downloadRankingCSV()" class="bg-green-600 text-white px-3 py-1.5 rounded text-xs font-bold shadow hover:bg-green-700"><i class="fas fa-download mr-1"></i> Excel</button></div></div></div><div class="flex-1 overflow-y-auto p-2 md:p-4 bg-gray-50" id="rankingPrintArea"><div id="rankingList" class="space-y-2"></div></div></div></div>
@@ -283,11 +235,6 @@
     <div id="editModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4"><div class="bg-white w-full max-w-sm rounded-xl p-4 shadow-2xl"><h3 class="font-bold text-lg mb-4">Edit Student</h3><input type="hidden" id="editId"><div class="space-y-3"><label class="text-xs font-bold text-gray-500">Name</label><input type="text" id="editName" class="w-full border p-2 rounded"><label class="text-xs font-bold text-gray-500">Father Mobile</label><input type="tel" id="editFather" class="w-full border p-2 rounded"><label class="text-xs font-bold text-gray-500">Mother Mobile</label><input type="tel" id="editMother" class="w-full border p-2 rounded"></div><div class="mt-6 flex gap-2"><button onclick="closeModal('editModal')" class="flex-1 py-3 text-gray-500 font-bold">Cancel</button><button onclick="saveStudentEdit()" class="flex-1 bg-blue-600 text-white rounded-lg font-bold">Save</button></div></div></div>
     <div id="leftStudentsModal" class="fixed inset-0 bg-black bg-opacity-90 hidden flex items-center justify-center z-50 p-4"><div class="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"><div class="bg-gray-800 p-4 text-white flex justify-between items-center"><h3 class="font-bold">Removed Students</h3><button onclick="closeModal('leftStudentsModal')" class="text-white"><i class="fas fa-times"></i></button></div><div class="flex-1 overflow-y-auto p-4"><table class="w-full text-left text-sm"><tbody id="leftStudentsList"></tbody></table><div id="noLeftStudentsMsg" class="text-center text-gray-400 mt-5 hidden">List empty.</div></div></div></div>
 
-    <script type="module">
-        import { GoogleGenerativeAI } from "@google/generative-ai";
-        window.GoogleGenerativeAI = GoogleGenerativeAI;
-    </script>
-
     <script>
         // --- GLOBAL VARIABLES ---
         let data = JSON.parse(localStorage.getItem('bcc_data_v10')) || {
@@ -297,8 +244,7 @@
                 audioUrl: "", template: "Namaste, Your ward {name} is ABSENT today. - BCC",
                 marksTemplate: "Namaste, Result for {test}: {marks}/{max}. - BCC",
                 absentTemplate: "Namaste, Alert: Your ward {name} was ABSENT for the {test} conducted on {date}. - BCC",
-                firebaseConfig: "",
-                geminiApiKey: "" 
+                firebaseConfig: "" 
             }
         };
         if(!data.callReports) data.callReports = [];
@@ -316,15 +262,6 @@
         function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
         function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
         function showLoader(show) { document.getElementById('loader').style.display = show ? 'flex' : 'none'; }
-        
-        function copyToClipboard(id) {
-            const input = document.getElementById(id);
-            input.select();
-            input.setSelectionRange(0, 99999); 
-            navigator.clipboard.writeText(input.value).then(() => {
-                alert("Copied!");
-            });
-        }
 
         function renderBatches() { 
             const h = data.batches.map(b => {
@@ -489,9 +426,6 @@
                 document.getElementById('firebaseConfigInput').value = data.settings.firebaseConfig;
                 initializeCloudConnection(true);
             }
-            if(data.settings.geminiApiKey) {
-                document.getElementById('geminiApiKeyInput').value = data.settings.geminiApiKey;
-            }
             loadMainList();
         }
 
@@ -506,11 +440,9 @@
                     if(!n.students || !Array.isArray(n.students)) throw new Error("Invalid Format");
                     
                     const oldConfig = data.settings?.firebaseConfig || "";
-                    const oldGemini = data.settings?.geminiApiKey || "";
                     data = n; 
                     if(!data.settings) data.settings = {};
                     if(!data.settings.firebaseConfig) data.settings.firebaseConfig = oldConfig;
-                    if(!data.settings.geminiApiKey) data.settings.geminiApiKey = oldGemini;
                     if(!data.callReports) data.callReports = [];
                     if(!data.marksHistory) data.marksHistory = [];
                     if(!data.history) data.history = [];
@@ -644,7 +576,6 @@
             document.getElementById('msgTemplate').value = data.settings.template || "Namaste, Your ward {name} is ABSENT today. - BCC"; 
             document.getElementById('marksTemplate').value = data.settings.marksTemplate;
             document.getElementById('absentTemplate').value = data.settings.absentTemplate;
-            document.getElementById('geminiApiKeyInput').value = data.settings.geminiApiKey || "";
         }
         function switchTab(tab) { 
             currentTab = tab; 
@@ -700,6 +631,7 @@
             const students = data.students.filter(s => s.batch === document.getElementById(batchSelectId).value && s.active !== false);
             if(students.length === 0) { list.innerHTML = `<div class="p-8 text-center text-gray-400">Empty Batch. Add students.</div>`; return; }
             
+            // ATTENDANCE LOGIC
             if(currentTab === 'attendance') {
                 selectedAbsent = []; updateAbsentCount();
                 students.forEach(s => {
@@ -772,79 +704,354 @@
             saveData(); alert("✅ Marks Saved!"); 
         }
 
-        // --- AI LOGIC ---
-        function openAIModal() {
-            document.getElementById('aiModal').classList.remove('hidden');
-        }
-
-        function fillPrompt(text) {
-            document.getElementById('aiInput').value = text;
-        }
-
-        async function sendToAI() {
-            const input = document.getElementById('aiInput');
-            const chat = document.getElementById('chatContainer');
-            const query = input.value.trim();
-            if (!query) return;
-
-            if (!data.settings.geminiApiKey) {
-                alert("Please add API Key in Settings first!");
-                return;
+        // --- SEND LOGIC ---
+        function openSendModal(t){ 
+            const l=document.getElementById('sendingList'); l.innerHTML=''; 
+            
+            if(t==='attendance'){ 
+                if(selectedAbsent.length===0) return alert("No absents selected. Please tick students first."); 
+                // Fallback template
+                const tmpl = data.settings.template || "Namaste, Your ward {name} is ABSENT today. - BCC";
+                selectedAbsent.forEach((s,i) => {
+                    const msg = tmpl.replace('{name}', s.name);
+                    appendSendRow(l, i, s, msg, 'Absent');
+                });
+            } else { 
+                const tn=document.getElementById('testName').value, mm=document.getElementById('maxMarks').value, td=document.getElementById('testDateInput').value; 
+                if(!tn) return alert("Details needed"); 
+                let c=0; 
+                for(const [id,mk] of Object.entries(currentMarks)){ 
+                    const s=data.students.find(x=>x.id==id); 
+                    if(s){ 
+                        let isAbs = (mk.toLowerCase() === 'ab' || mk.toLowerCase() === 'absent' || mk.toLowerCase() === 'a');
+                        let msg = isAbs 
+                            ? data.settings.absentTemplate.replace('{name}', s.name).replace('{test}', tn).replace('{date}', td)
+                            : data.settings.marksTemplate.replace('{test}',tn).replace('{marks}',mk).replace('{max}',mm).replace('{name}',s.name);
+                        appendSendRow(l,c++,s,msg, isAbs ? `ABSENT` : `Marks: ${mk}`);
+                    }
+                }
             }
+            document.getElementById('sendModal').classList.remove('hidden');
+        }
 
-            // UI Update
-            chat.innerHTML += `<div class="ai-message ai-user">${query}</div>`;
-            input.value = '';
-            chat.innerHTML += `<div class="ai-message ai-bot" id="typing">Thinking...</div>`;
-            chat.scrollTop = chat.scrollHeight;
+        function appendSendRow(c, i, s, m, l){ 
+            const fatherLink = getWhatsAppLink(s.father, m);
+            const motherLink = getWhatsAppLink(s.mother, m);
+            
+            c.innerHTML+=`<div class="bg-gray-50 p-3 rounded-xl border shadow-sm mb-2">
+                <div class="flex justify-between mb-2"><span class="font-bold text-gray-800">${i+1}. ${s.name}</span><span class="text-xs font-bold bg-gray-200 px-2 py-1 rounded text-gray-600">${l}</span></div>
+                <div class="flex gap-2">
+                    ${s.father ? `<a href="${fatherLink}" target="_blank" class="flex-1 bg-green-100 text-green-800 py-2 rounded text-center text-sm font-bold border border-green-200"><i class="fab fa-whatsapp"></i> Father</a>` : '<span class="text-xs text-gray-400 p-2">No Father No.</span>'}
+                    ${s.mother ? `<a href="${motherLink}" target="_blank" class="flex-1 bg-pink-100 text-pink-800 py-2 rounded text-center text-sm font-bold border border-pink-200"><i class="fab fa-whatsapp"></i> Mother</a>` : '<span class="text-xs text-gray-400 p-2">No Mother No.</span>'}
+                </div>
+            </div>`; 
+        }
 
-            try {
-                // Prepare Data Context (Summarized to save tokens)
-                const context = {
-                    batches: data.batches,
-                    totalStudents: data.students.length,
-                    recentAttendance: data.history.slice(-10), // Last 10 days
-                    recentTests: data.marksHistory.slice(-5)   // Last 5 tests
-                };
-
-                const prompt = `
-                    You are an AI Assistant for "Brilliant College of Commerce".
-                    Here is the current data context: ${JSON.stringify(context)}.
-                    
-                    User Query: "${query}"
-                    
-                    Please analyze the data and provide a helpful, professional response for the coaching owner.
-                    If asked for a message to parents, draft a polite WhatsApp message.
-                `;
-
-                const genAI = new window.GoogleGenerativeAI(data.settings.geminiApiKey);
-                const model = genAI.getGenerativeModel({ model: "gemini-pro" });
-                const result = await model.generateContent(prompt);
-                const response = result.response.text();
-
-                // Remove typing indicator
-                document.getElementById('typing').remove();
+        // --- HISTORY & LOGS ---
+        function openHistory() { document.getElementById('historyModal').classList.remove('hidden'); document.getElementById('historyDate').value=todayStr; document.getElementById('historyBatch').innerHTML = document.getElementById('batchSelect').innerHTML; document.getElementById('historyBatch').value = document.getElementById('batchSelect').value; loadHistoryData(); }
+        function loadHistoryData() { 
+            const d=document.getElementById('historyDate').value; 
+            const b=document.getElementById('historyBatch').value; 
+            const rec=data.history.find(h=>h.date===d && h.batch===b); 
+            const tb=document.getElementById('historyTableBody'); tb.innerHTML=''; 
+            const st=data.students.filter(s=>s.batch===b && s.active!==false); 
+            
+            if(!rec || st.length===0){document.getElementById('noHistoryMsg').classList.remove('hidden'); return;} 
+            document.getElementById('noHistoryMsg').classList.add('hidden'); 
+            
+            st.forEach(s=>{ 
+                const isA=rec.absentIds.includes(s.id); 
+                const tmpl = data.settings.template || "Namaste, Your ward {name} is ABSENT today. - BCC";
+                const msg = tmpl.replace('{name}', s.name);
+                const fatherLink = getWhatsAppLink(s.father, msg);
                 
-                // Show Response (Convert Markdown to simple HTML if needed, here plain text)
-                chat.innerHTML += `<div class="ai-message ai-bot">${response.replace(/\n/g, '<br>')}</div>`;
+                const waBtn = isA ? `<a href="${fatherLink}" target="_blank" class="text-green-600 ml-2"><i class="fab fa-whatsapp"></i></a>` : '';
+                
+                tb.innerHTML+=`<tr class="border-b">
+                    <td class="p-2 font-bold">${s.name}</td>
+                    <td class="p-2 text-center"><span class="${isA?'bg-red-100 text-red-800':'bg-green-100 text-green-800'} px-2 rounded text-xs font-bold">${isA?'A':'P'}</span> ${waBtn}</td>
+                    <td class="text-xs text-right text-gray-400 p-2">${s.father||''}</td>
+                </tr>`; 
+            }); 
+        }
+        function exportHistoryCSV() { const start = document.getElementById('exportStart').value; const end = document.getElementById('exportEnd').value; const batch = document.getElementById('historyBatch').value; if(!start || !end) return alert("Select Dates"); const sDate = new Date(start); const eDate = new Date(end); const students = data.students.filter(s => s.batch === batch); let csv = "data:text/csv;charset=utf-8,Date,Name,Status\n"; for(let d = new Date(sDate); d <= eDate; d.setDate(d.getDate()+1)) { const dStr = d.toISOString().split('T')[0]; const rec = data.history.find(h => h.date === dStr && h.batch === batch); students.forEach(s => { let stat = "-"; if(rec) stat = rec.absentIds.includes(s.id) ? "ABSENT" : "PRESENT"; if(rec) csv += `${dStr},"${s.name}",${stat}\n`; }); } const link = document.createElement("a"); link.href = encodeURI(csv); link.download = `Report_${batch}.csv`; document.body.appendChild(link); link.click(); link.remove(); }
 
-            } catch (error) {
-                document.getElementById('typing').innerText = "Error: " + error.message;
+        // --- FOLLOW UP ---
+        let currentFollowUpMode = '';
+        function loadFollowUpList(mode) {
+            currentFollowUpMode = mode;
+            const batch = document.getElementById('followUpBatchSelect').value;
+            const listContainer = document.getElementById('mainList');
+            const filtersDiv = document.getElementById('followUpFilters');
+            listContainer.innerHTML = '';
+            document.getElementById('btn-defaulters').classList.remove('ring-2', 'ring-red-500');
+            document.getElementById('btn-weak').classList.remove('ring-2', 'ring-orange-500');
+            document.getElementById('btn-logs').classList.remove('bg-gray-300');
+
+            if (mode === 'defaulters') {
+                document.getElementById('btn-defaulters').classList.add('ring-2', 'ring-red-500');
+                filtersDiv.classList.remove('hidden');
+                document.getElementById('followUpMonth').classList.remove('hidden');
+                document.getElementById('followUpTest').classList.add('hidden');
+                const mVal = document.getElementById('followUpMonth').value;
+                if(!mVal) { listContainer.innerHTML = '<div class="text-gray-400 text-center p-5">Select Month</div>'; return; }
+                const [y, m] = mVal.split('-');
+                const days = new Date(y, m, 0).getDate();
+                const studs = data.students.filter(s => s.batch === batch && s.active !== false);
+                let list = [];
+                studs.forEach(s => {
+                    let absCnt = 0;
+                    for(let d=1; d<=days; d++) {
+                        const date = `${y}-${m}-${String(d).padStart(2,'0')}`;
+                        const rec = data.history.find(x => x.date === date && x.batch === batch);
+                        if(rec && rec.absentIds.includes(s.id)) absCnt++;
+                    }
+                    if(absCnt > 2) list.push({ ...s, count: absCnt });
+                });
+                renderCards(list, 'Attendance', mVal);
+            } else if (mode === 'weak') {
+                document.getElementById('btn-weak').classList.add('ring-2', 'ring-orange-500');
+                filtersDiv.classList.remove('hidden');
+                document.getElementById('followUpMonth').classList.add('hidden');
+                document.getElementById('followUpTest').classList.remove('hidden');
+                const testIdx = document.getElementById('followUpTest').value;
+                const studs = data.students.filter(s => s.batch === batch && s.active !== false);
+                let weakList = [];
+                if(testIdx == -1) {
+                    studs.forEach(s => {
+                        let obt=0, max=0;
+                        data.marksHistory.forEach(t => { 
+                            if(t.batch.trim() === batch.trim()) {
+                                let raw = t.results[s.id];
+                                if(raw) {
+                                    let val = parseFloat(raw);
+                                    if(isNaN(val)) val = 0; 
+                                    obt += val;
+                                    max += parseFloat(t.maxMarks);
+                                }
+                            }
+                        });
+                        let pct = max>0 ? (obt/max)*100 : 0;
+                        if(max > 0 && pct < 50) weakList.push({...s, percentage: pct, label: 'Agg', isAbsent: false});
+                    });
+                } else {
+                    const tests = data.marksHistory.filter(t => t.batch.trim() === batch.trim());
+                    const t = tests[testIdx];
+                    if(t) {
+                        studs.forEach(s => {
+                            let raw = t.results[s.id];
+                            if(raw) {
+                                let isAbs = (raw.toLowerCase() === 'ab' || raw.toLowerCase() === 'absent' || raw.toLowerCase() === 'a');
+                                let val = parseFloat(raw);
+                                if(isAbs) { weakList.push({...s, percentage: 0, label: 'Test', isAbsent: true}); } 
+                                else if (!isNaN(val)) {
+                                    let pct = (val/parseFloat(t.maxMarks))*100;
+                                    if(pct < 50) weakList.push({...s, percentage: pct, label: 'Test', isAbsent: false});
+                                }
+                            }
+                        });
+                    }
+                }
+                renderCards(weakList, 'Marks', testIdx == -1 ? 'Overall' : 'Specific Test');
+            } else if (mode === 'logs') {
+                document.getElementById('btn-logs').classList.add('bg-gray-300');
+                filtersDiv.classList.add('hidden');
+                const logs = data.callReports.filter(l => {
+                    const s = data.students.find(x => x.id === l.studentId);
+                    return s && s.batch === batch;
+                }).reverse();
+                if(logs.length === 0) listContainer.innerHTML = '<div class="text-gray-400 text-center p-10">No calls recorded.</div>';
+                logs.forEach(l => {
+                    const s = data.students.find(x => x.id === l.studentId);
+                    if(s) {
+                         listContainer.innerHTML += `<div class="bg-white p-3 rounded-lg border shadow-sm flex flex-col gap-1"><div class="flex justify-between"><span class="font-bold text-gray-800">${s.name}</span><span class="text-xs text-gray-400">${l.timestamp}</span></div><div class="flex gap-2"><span class="text-[10px] bg-blue-100 text-blue-800 px-1 rounded">${l.type}</span><span class="text-[10px] bg-gray-100 text-gray-600 px-1 rounded truncate max-w-[200px]">${l.context}</span></div><p class="text-sm italic text-gray-600 bg-gray-50 p-2 rounded mt-1 border-l-2 border-gray-400">"${l.remark}"</p></div>`;
+                    }
+                });
             }
-            chat.scrollTop = chat.scrollHeight;
         }
 
-        function saveSettings() { 
-            data.settings.audioUrl = document.getElementById('audioLink').value; 
-            data.settings.template = document.getElementById('msgTemplate').value; 
-            data.settings.marksTemplate = document.getElementById('marksTemplate').value; 
-            data.settings.absentTemplate = document.getElementById('absentTemplate').value;
-            data.settings.firebaseConfig = document.getElementById('firebaseConfigInput').value;
-            data.settings.geminiApiKey = document.getElementById('geminiApiKeyInput').value;
-            saveData(); closeModal('settingsModal'); 
+        function renderCards(list, type, context) {
+            const listContainer = document.getElementById('mainList');
+            if(list.length === 0) { listContainer.innerHTML = '<div class="text-center p-10 text-gray-400 bg-white rounded-lg border border-dashed">All Good!</div>'; return; }
+            list.forEach(s => {
+                const existingReport = data.callReports.find(r => r.studentId === s.id && r.context === context && r.type === type);
+                const isDone = !!existingReport;
+                const statusClass = isDone ? 'status-done' : 'status-pending';
+                let detailText = '';
+                if(type === 'Attendance') { detailText = `${s.count} Absents`; } else { detailText = s.isAbsent ? '<span class="text-red-600 font-black">ABSENT (AB)</span>' : `${s.percentage.toFixed(1)}% Marks`; }
+                const mobile = s.father || s.mother || '';
+                listContainer.innerHTML += `<div class="bg-white border rounded-lg p-4 shadow-sm ${statusClass} flex flex-col gap-3"><div class="flex justify-between items-start"><div><h4 class="font-bold text-lg text-gray-800">${s.name}</h4><span class="text-xs font-bold bg-gray-200 px-2 py-1 rounded text-gray-600 mt-1 inline-block">${detailText}</span></div><div>${mobile ? `<a href="tel:${mobile}" class="bg-green-600 text-white w-10 h-10 rounded-full flex items-center justify-center shadow hover:bg-green-700 transition"><i class="fas fa-phone"></i></a>` : '<span class="text-xs text-red-400 font-bold border border-red-200 px-2 py-1 rounded bg-red-50">No Number</span>'}</div></div><div class="flex gap-2"><input type="text" id="remark_${s.id}" placeholder="Operator Remark..." class="flex-1 border p-2 rounded text-sm bg-gray-50 focus:bg-white transition" value="${existingReport ? existingReport.remark : ''}"><button onclick="saveCallReportDirect(${s.id}, '${type}', '${context}')" class="bg-blue-600 text-white px-4 rounded-lg text-sm font-bold shadow hover:bg-blue-700 transition">Save</button></div></div>`;
+            });
         }
+
+        async function saveCallReportDirect(sid, type, context) {
+            const remark = document.getElementById(`remark_${sid}`).value;
+            if(!remark) return alert("Write a remark first");
+            data.callReports = data.callReports.filter(r => !(r.studentId === sid && r.context === context && r.type === type));
+            const report = { studentId: sid, type: type, context: context, remark: remark, timestamp: new Date().toLocaleString() };
+            data.callReports.push(report);
+            if(isCloudActive) {
+                try {
+                    const id = `${sid}_${new Date().getTime()}`;
+                    await db.collection('bcc_call_logs').doc(id).set(report);
+                } catch(e) { console.error(e); }
+            }
+            saveData();
+            const btn = event.target; btn.innerText = "Saved"; btn.classList.remove('bg-blue-600', 'hover:bg-blue-700'); btn.classList.add('bg-green-600', 'hover:bg-green-700'); btn.closest('.bg-white').classList.remove('status-pending'); btn.closest('.bg-white').classList.add('status-done');
+        }
+
+        // Keep downloadData same
+        function downloadData() { const s="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(data)); const a=document.createElement('a'); a.href=s; a.download="bcc_backup.json"; document.body.appendChild(a); a.click(); a.remove(); }
+        // Keep other minor helper functions
+        function downloadFullReport() { let csv = "Name,Father,Mother,Batch\n"; data.students.forEach(s => csv += `${s.name},${s.father},${s.mother},${s.batch}\n`); const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8,"+csv); link.download = "all_students.csv"; document.body.appendChild(link); link.click(); link.remove(); }
+        function downloadSampleCSV() { const csv = "data:text/csv;charset=utf-8,Name,FatherMobile,MotherMobile\nAarav,9876543210,9876543211"; const a=document.createElement("a"); a.href=encodeURI(csv); a.download="students_sample.csv"; document.body.appendChild(a); a.click(); a.remove(); }
+        function downloadClassListForMarks() {
+            const batch = document.getElementById('marksBatchSelect').value;
+            const students = data.students.filter(s => s.batch === batch && s.active !== false);
+            if(students.length === 0) return alert("No students in this batch");
+            const dateStr = new Date().toLocaleDateString('en-GB').replace(/\//g, '-');
+            const cleanBatch = batch.replace(/[^a-z0-9]/gi, '_');
+            let csv = "Name,Marks\n";
+            students.forEach(s => csv += `${s.name},\n`);
+            const link = document.createElement("a"); link.href = encodeURI("data:text/csv;charset=utf-8,"+csv); link.download = `Marks_${cleanBatch}_${dateStr}.csv`; document.body.appendChild(link); link.click(); link.remove();
+        }
+        function importMarksCSV(input) { 
+            const file = input.files[0]; if(!file) return; 
+            const reader = new FileReader(); 
+            reader.onload = function(e) { 
+                const text = e.target.result.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+                const rows = text.split('\n').slice(1); 
+                const batch = document.getElementById('marksBatchSelect').value; 
+                const batchStudents = data.students.filter(s => s.batch === batch); 
+                let count = 0; let notFound = 0;
+                rows.forEach(row => { 
+                    if(!row.trim()) return;
+                    const cols = row.split(','); 
+                    if(cols.length >= 2) { 
+                        const csvName = cols[0].trim(); const marks = cols[1].trim(); 
+                        if(csvName) {
+                            const student = batchStudents.find(s => s.name.toLowerCase() === csvName.toLowerCase()); 
+                            if(student) { if(marks !== "") { currentMarks[student.id] = marks; count++; } } else { notFound++; }
+                        }
+                    } 
+                }); 
+                input.value = ''; loadMainList(); 
+                let msg = `✅ Imported ${count} marks successfully.`;
+                if(notFound > 0) msg += `\n⚠️ Warning: ${notFound} names in CSV did not match any student in the selected batch ("${batch}").`;
+                setTimeout(() => alert(msg), 100); 
+            }; 
+            reader.readAsText(file); 
+        }
+        function openEditModal(id) { const s=data.students.find(x=>x.id===id); document.getElementById('editId').value=s.id; document.getElementById('editName').value=s.name; document.getElementById('editFather').value=s.father.replace('91',''); document.getElementById('editMother').value=s.mother.replace('91',''); document.getElementById('editModal').classList.remove('hidden'); }
+        async function saveStudentEdit() { 
+            const id=document.getElementById('editId').value; const n=document.getElementById('editName').value; let f=document.getElementById('editFather').value; let m=document.getElementById('editMother').value; 
+            if(f&&f.length===10) f='91'+f; if(m&&m.length===10) m='91'+m; 
+            const idx=data.students.findIndex(x=>x.id==id); 
+            if(idx!==-1){ 
+                data.students[idx].name=n; data.students[idx].father=f; data.students[idx].mother=m; 
+                if(isCloudActive) await db.collection('bcc_students').doc(String(id)).set(data.students[idx], {merge:true});
+                saveData(); closeModal('editModal'); loadMainList(); 
+            } 
+        }
+        function openRankingModal() {
+            const batch = document.getElementById('marksBatchSelect').value;
+            const select = document.getElementById('rankingTestSelect');
+            select.innerHTML = '<option value="-1">📊 All Tests (Overall Aggregate)</option>';
+            const tests = data.marksHistory.filter(t => t.batch.trim() === batch.trim()).sort((a,b) => new Date(b.date) - new Date(a.date));
+            tests.forEach((t, idx) => {
+                select.innerHTML += `<option value="${idx}">${t.date} : ${t.title} (Max: ${t.maxMarks})</option>`;
+            });
+            renderRankingList();
+            document.getElementById('rankingModal').classList.remove('hidden');
+        }
+        function renderRankingList() {
+            const batch = document.getElementById('marksBatchSelect').value;
+            const testIdx = document.getElementById('rankingTestSelect').value;
+            const container = document.getElementById('rankingList');
+            container.innerHTML = '';
+            const students = data.students.filter(s => s.batch === batch && s.active !== false);
+            let rankList = [];
+            if(testIdx == -1) {
+                document.getElementById('rankSubtitle').innerText = "Overall Class Performance";
+                rankList = students.map(s => {
+                    let obt=0, max=0, cnt=0;
+                    data.marksHistory.forEach(t => { 
+                        if(t.batch.trim()===batch.trim() && t.results[s.id] && !isNaN(parseFloat(t.results[s.id]))) { 
+                            obt+=parseFloat(t.results[s.id]); 
+                            max+=parseFloat(t.maxMarks); 
+                            cnt++; 
+                        } 
+                    });
+                    let pct = max>0 ? (obt/max)*100 : 0;
+                    return { ...s, totalObtained: obt, totalMax: max, percentage: pct, testsCount: cnt, label: 'Agg' };
+                });
+            } else {
+                const tests = data.marksHistory.filter(t => t.batch.trim() === batch.trim()).sort((a,b) => new Date(b.date) - new Date(a.date));
+                const targetTest = tests[testIdx];
+                document.getElementById('rankSubtitle').innerText = `Results for: ${targetTest.title}`;
+                rankList = students.map(s => {
+                    let rawVal = targetTest.results[s.id];
+                    let isAbsent = rawVal && (rawVal.toLowerCase() === 'ab' || rawVal.toLowerCase() === 'absent' || rawVal.toLowerCase() === 'a');
+                    let obt = isAbsent ? 0 : (rawVal ? parseFloat(rawVal) : 0);
+                    let attended = rawVal !== undefined;
+                    let max = parseFloat(targetTest.maxMarks);
+                    let pct = attended && !isAbsent ? (obt/max)*100 : 0;
+                    return { ...s, totalObtained: isAbsent ? 'AB' : obt, totalMax: max, percentage: pct, testsCount: attended?1:0, label: 'Test', isAbsent };
+                });
+            }
+            rankList.sort((a,b) => b.percentage - a.percentage);
+            currentRankingList = rankList; 
+            if(rankList.every(r => r.testsCount === 0)) { container.innerHTML='<div class="text-center text-gray-400 p-5">No Data available.</div>'; return; }
+            rankList.forEach((s, index) => {
+                if(s.testsCount === 0) return;
+                let rankClass="bg-white border-l-4 border-gray-300", icon=`<span class="font-bold text-gray-500">#${index+1}</span>`;
+                if(index===0){rankClass="rank-1"; icon="🥇";} if(index===1){rankClass="rank-2"; icon="🥈";} if(index===2){rankClass="rank-3"; icon="🥉";}
+                let scoreDisplay = s.isAbsent || s.totalObtained === 'AB' ? '<span class="text-red-600 font-bold">ABSENT</span>' : `<span class="font-bold text-gray-700">${s.totalObtained}/${s.totalMax}</span>`;
+                let msg = s.isAbsent ? `Alert: ${s.name} was ABSENT for the test. - BCC` : `Congratulations! You ranked #${index+1} with ${s.percentage.toFixed(1)}%. Keep it up! - BCC`;
+                let waBtn = s.father ? `<a href="https://wa.me/${s.father}?text=${encodeURIComponent(msg)}" target="_blank" class="text-green-600"><i class="fab fa-whatsapp"></i> Wish/Alert</a>` : '';
+                container.innerHTML += `<div class="flex items-center p-3 rounded-lg shadow-sm mb-2 ${rankClass}"><div class="text-2xl mr-4 w-8 text-center">${icon}</div><div class="flex-1"><h4 class="font-bold text-gray-800">${s.name}</h4><div class="text-xs text-gray-500">Score: ${scoreDisplay} | Avg: <span class="font-bold ${s.percentage>=75?'text-green-600':'text-orange-600'}">${s.percentage.toFixed(1)}%</span></div></div><div>${waBtn}</div></div>`;
+            });
+        }
+        function printRanking() {
+            const content = document.getElementById('rankingList').innerHTML;
+            const title = document.getElementById('rankSubtitle').innerText;
+            const win = window.open('', '', 'height=600,width=800');
+            win.document.write('<html><head><title>BCC Ranking</title>');
+            win.document.write('<style>body{font-family:sans-serif;} .flex{display:flex;align-items:center;border-bottom:1px solid #eee;padding:10px;} .rank-1{background:#fff7e6;border-left:5px solid gold;} .rank-2{background:#f9f9f9;border-left:5px solid silver;} .rank-3{background:#fffbf5;border-left:5px solid #cd7f32;} .text-2xl{font-size:20px;margin-right:15px;width:30px;} .font-bold{font-weight:bold;} .text-xs{font-size:12px;color:#666;} </style>');
+            win.document.write('</head><body>');
+            win.document.write(`<h2>${title}</h2><hr>`);
+            win.document.write(content);
+            win.document.write('</body></html>');
+            win.document.close();
+            win.print();
+        }
+        function downloadRankingCSV() {
+            if(!currentRankingList.length) return alert("No data to download");
+            let csv = "Rank,Name,Obtained,Max,Percentage\n";
+            currentRankingList.forEach((s, i) => {
+                if(s.testsCount > 0) csv += `${i+1},${s.name},${s.totalObtained},${s.totalMax},${s.percentage.toFixed(2)}%\n`;
+            });
+            const a = document.createElement('a'); a.href = encodeURI("data:text/csv;charset=utf-8,"+csv); a.download = "Class_Ranking.csv"; document.body.appendChild(a); a.click(); a.remove();
+        }
+        function openManageTestsModal() {
+            const batch = document.getElementById('marksBatchSelect').value; const c = document.getElementById('pastTestsList'); c.innerHTML='';
+            const tests = data.marksHistory.map((t,i)=>({...t,idx:i})).filter(t=>t.batch===batch).sort((a,b)=>new Date(b.date)-new Date(a.date));
+            if(tests.length===0) c.innerHTML='<div class="text-center text-gray-400 p-5">No tests.</div>';
+            else tests.forEach(t => c.innerHTML+=`<div class="bg-white p-3 rounded-lg border shadow-sm flex justify-between items-center"><div><h4 class="font-bold text-gray-800">${t.title}</h4><div class="text-xs text-gray-500">${t.date} | Max: ${t.maxMarks}</div></div><div class="flex gap-2"><button onclick="editTest(${t.idx})" class="bg-blue-100 text-blue-700 px-3 py-1 rounded text-xs font-bold">Edit</button><button onclick="deleteTest(${t.idx})" class="bg-red-100 text-red-700 px-3 py-1 rounded text-xs font-bold">Delete</button></div></div>`);
+            document.getElementById('manageTestsModal').classList.remove('hidden');
+        }
+        function deleteTest(i){ if(confirm("Delete Test?")){ data.marksHistory.splice(i,1); saveData(); openManageTestsModal(); } }
+        function editTest(i){ editingTestIndex=i; const t=data.marksHistory[i]; document.getElementById('editTestName').value=t.title; document.getElementById('editTestMax').value=t.maxMarks; document.getElementById('editTestDate').value=t.date; const l=document.getElementById('editMarksList'); l.innerHTML=''; data.students.filter(s=>s.batch===t.batch&&s.active!==false).forEach(s=>{ l.innerHTML+=`<div class="flex items-center justify-between py-2 border-b"><span class="text-sm font-bold text-gray-700 flex-1">${s.name}</span><input type="text" class="edit-marks-input w-20 border p-2 rounded text-center font-bold" data-sid="${s.id}" value="${t.results[s.id]||''}"></div>`; }); closeModal('manageTestsModal'); document.getElementById('editTestMarksModal').classList.remove('hidden'); }
+        function updateTestMarks(){ if(editingTestIndex===-1)return; const inputs=document.querySelectorAll('.edit-marks-input'), res={}; inputs.forEach(i=>{if(i.value.trim()!=='')res[i.dataset.sid]=i.value.trim();}); const t=data.marksHistory[editingTestIndex]; t.title=document.getElementById('editTestName').value; t.maxMarks=document.getElementById('editTestMax').value; t.date=document.getElementById('editTestDate').value; t.results=res; saveData(); alert("Updated!"); closeModal('editTestMarksModal'); loadMainList(); }
+        function openStudentProfile(id) { const s = data.students.find(x => x.id === id); if(!s) return; const tests = data.marksHistory.filter(m => m.results[id] && m.batch === s.batch); const modalBody = document.getElementById('profileContent'); const parentBtn = document.getElementById('sendProfileReportBtn'); let html = `<div class="text-center mb-6"><div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-2 text-2xl font-bold text-blue-600">${s.name.charAt(0)}</div><h2 class="text-xl font-bold text-gray-800">${s.name}</h2><p class="text-sm text-gray-500">${s.batch}</p></div><h4 class="font-bold text-gray-600 mb-3 text-xs uppercase tracking-wider">Test Performance History</h4>`; if(tests.length === 0) { html += `<div class="text-center text-gray-400 py-10">No test records found.</div>`; parentBtn.classList.add('hidden'); } else { parentBtn.classList.remove('hidden'); let reportMsg = `Namaste, Performance Report for ${s.name}:\n`; let totalPct = 0; tests.forEach((t, index) => { const obtained = parseFloat(t.results[id]); const max = parseFloat(t.maxMarks); const pct = (obtained / max) * 100; totalPct += pct; reportMsg += `${index+1}. ${t.title}: ${obtained}/${max} (${pct.toFixed(0)}%)\n`; let barColor = pct >= 80 ? 'bg-green-500' : (pct >= 50 ? 'bg-blue-500' : 'bg-red-500'); html += `<div class="mb-4"><div class="flex justify-between text-sm mb-1"><span class="font-bold text-gray-700">${t.title}</span><span class="font-bold ${pct >= 80 ? 'text-green-600' : 'text-gray-600'}">${obtained}/${max}</span></div><div class="h-2 bg-gray-200 rounded-full overflow-hidden"><div class="h-full ${barColor} rounded-full" style="width: ${pct}%"></div></div><div class="text-xs text-gray-400 mt-1">${new Date(t.date).toLocaleDateString()}</div></div>`; }); const avg = totalPct / tests.length; reportMsg += `\nOverall Average: ${avg.toFixed(1)}%\n- Brilliant College of Commerce (BCC)`; const encoded = encodeURIComponent(reportMsg); const phone = s.father || s.mother; if(phone) { parentBtn.onclick = () => window.open(`https://wa.me/${phone}?text=${encoded}`, '_blank'); parentBtn.innerHTML = `<i class="fab fa-whatsapp"></i> Send Report to Parent (${phone.slice(-4)})`; } else { parentBtn.innerHTML = "No Parent Number Linked"; parentBtn.disabled = true; } } modalBody.innerHTML = html; document.getElementById('studentProfileModal').classList.remove('hidden'); }
+        function openMonthlyReport() { document.getElementById('monthlyModal').classList.remove('hidden'); const t=new Date(); document.getElementById('reportMonth').value=`${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}`; document.getElementById('reportBatch').innerHTML = document.getElementById('batchSelect').innerHTML; document.getElementById('reportBatch').value = document.getElementById('batchSelect').value; loadMonthlyData(); }
+        function loadMonthlyData() { const mVal=document.getElementById('reportMonth').value; const batch=document.getElementById('reportBatch').value; const grid=document.getElementById('monthlyGrid'); if(!mVal||!batch)return; const [y,m]=mVal.split('-'); const days=new Date(y,m,0).getDate(); const studs=data.students.filter(s=>s.batch===batch && s.active!==false); if(studs.length===0){grid.innerHTML="<div class='text-center p-10 text-gray-400'>Empty</div>";return;} let h=`<table class="border-collapse w-full text-sm"><thead><tr><th class="border p-2 bg-gray-100 sticky left-0 min-w-[100px]">Name</th>`; for(let d=1;d<=days;d++)h+=`<th class="border p-1 w-[25px] text-center bg-gray-50 text-[10px] text-gray-500">${d}</th>`; h+=`<th class="border p-2 bg-gray-100 text-center text-red-600 font-bold">Tot</th></tr></thead><tbody>`; studs.forEach(s=>{ let ac=0; h+=`<tr><td class="border p-2 font-bold bg-white sticky left-0 text-xs">${s.name}</td>`; for(let d=1;d<=days;d++){ const date=`${y}-${m}-${String(d).padStart(2,'0')}`; const rec=data.history.find(x=>x.date===date && x.batch===batch); let c=""; if(!rec)c=`<div class="cell-box bg-gray-50 text-gray-300">-</div>`; else if(rec.absentIds.includes(s.id)){c=`<div class="cell-box bg-red-500 text-white font-bold">A</div>`;ac++;} else c=`<div class="cell-box bg-green-100 text-green-600 font-bold">P</div>`; h+=`<td class="border p-1">${c}</td>`; } h+=`<td class="border p-2 text-center font-bold text-red-600">${ac}</td></tr>`; }); h+=`</tbody></table>`; grid.innerHTML=h; }
+        function printMonthlyReport() { const gridHtml = document.getElementById('monthlyGrid').innerHTML; const month = document.getElementById('reportMonth').value; const batch = document.getElementById('reportBatch').value; if(!gridHtml || gridHtml.includes("Empty")) return alert("No data to print!"); const printWin = window.open('', '', 'width=900,height=600'); printWin.document.write(`<html><head><title>Attendance Report - ${batch}</title><style> body { font-family: sans-serif; padding: 20px; } h1, h3 { text-align: center; margin: 5px; } table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 10px; } th, td { border: 1px solid #999; padding: 4px; text-align: center; } th { background-color: #f3f3f3; } .text-left { text-align: left; } .bg-red-500 { background-color: #ef4444 !important; color: white !important; -webkit-print-color-adjust: exact; } .bg-green-100 { background-color: #dcfce7 !important; color: #166534 !important; -webkit-print-color-adjust: exact; } .bg-gray-50 { background-color: #f9fafb !important; color: #d1d5db !important; -webkit-print-color-adjust: exact; } .cell-box { display: inline-block; width: 20px; height: 20px; line-height: 20px; border-radius: 3px; font-weight: bold; } @media print { @page { size: landscape; margin: 10mm; } } </style></head><body><h1>Brilliant College of Commerce</h1><h3>Attendance Report: ${batch} (${month})</h3>${gridHtml}</body></html>`); printWin.document.close(); printWin.print(); }
+        function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+        function openSettings() { document.getElementById('settingsModal').classList.remove('hidden'); }
+        function showLoader(show) { document.getElementById('loader').style.display = show ? 'flex' : 'none'; }
 
         init();
     </script>
 </body>
-</html>
+</html>V
